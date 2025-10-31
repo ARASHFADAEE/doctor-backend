@@ -23,7 +23,7 @@ async function getById(id) {
 
 async function listByDoctor(doctor_id) {
   const [rows] = await pool.query(
-    `SELECT mt.id, mt.description, mt.status, mt.created_at,
+    `SELECT mt.id, mt.description, mt.status, mt.created_at, mt.ai_result,
             u.name as patient_name
      FROM medical_tests mt
      JOIN users u ON mt.patient_id = u.id
@@ -31,12 +31,12 @@ async function listByDoctor(doctor_id) {
      ORDER BY mt.created_at DESC`,
     [doctor_id]
   );
-  return rows.map(r => ({ id: r.id, description: r.description, status: r.status, created_at: r.created_at, patient: { name: r.patient_name } }));
+  return rows.map(r => ({ id: r.id, description: r.description, status: r.status, created_at: r.created_at, ai_result: r.ai_result, patient: { name: r.patient_name } }));
 }
 
 async function listByPatient(patient_id) {
   const [rows] = await pool.query(
-    `SELECT mt.id, mt.description, mt.status, mt.created_at, mt.image_path,
+    `SELECT mt.id, mt.description, mt.status, mt.created_at, mt.image_path, mt.ai_result,
             d.name as doctor_name
      FROM medical_tests mt
      LEFT JOIN users d ON mt.doctor_id = d.id
@@ -44,7 +44,7 @@ async function listByPatient(patient_id) {
      ORDER BY mt.created_at DESC`,
     [patient_id]
   );
-  return rows.map(r => ({ id: r.id, description: r.description, status: r.status, created_at: r.created_at, image_path: r.image_path, doctor: r.doctor_name ? { name: r.doctor_name } : null }));
+  return rows.map(r => ({ id: r.id, description: r.description, status: r.status, created_at: r.created_at, image_path: r.image_path, ai_result: r.ai_result, doctor: r.doctor_name ? { name: r.doctor_name } : null }));
 }
 
 module.exports = {

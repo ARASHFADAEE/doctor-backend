@@ -2,6 +2,7 @@ const path = require('path');
 const multer = require('multer');
 const { analyzeImage } = require('../services/openai.service');
 const { createTest, updateTest, listByDoctor, listByPatient, getById } = require('../models/MedicalTest');
+const { normalizeAIResult } = require('../utils/aiResult');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../../uploads')),
@@ -40,7 +41,22 @@ async function uploadAndAnalyze(req, res, next) {
 async function doctorList(req, res, next) {
   try {
     const list = await listByDoctor(req.user.id);
-    return res.json(list);
+    const enhanced = list.map(item => {
+      let severity = 'low';
+      let is_urgent = item.status === 'urgent';
+      if (item.ai_result) {
+        try {
+          const ai = normalizeAIResult(item.ai_result, { description: item.description, age: req.user.age });
+          severity = ai.severity || severity;
+          is_urgent = typeof ai.urgent === 'boolean' ? ai.urgent : is_urgent;
+        } catch (_) {}
+      } else {
+        severity = is_urgent ? 'high' : 'low';
+      }
+      const { ai_result, ...rest } = item;
+      return { ...rest, severity, is_urgent };
+    });
+    return res.json(enhanced);
   } catch (e) { next(e); }
 }
 
@@ -49,10 +65,40 @@ async function patientList(req, res, next) {
     if (req.user.role === 'doctor') {
       // برای دکترها لیست اختصاصی موجود است
       const list = await listByDoctor(req.user.id);
-      return res.json(list);
+      const enhanced = list.map(item => {
+        let severity = 'low';
+        let is_urgent = item.status === 'urgent';
+        if (item.ai_result) {
+          try {
+            const ai = normalizeAIResult(item.ai_result, { description: item.description, age: req.user.age });
+            severity = ai.severity || severity;
+            is_urgent = typeof ai.urgent === 'boolean' ? ai.urgent : is_urgent;
+          } catch (_) {}
+        } else {
+          severity = is_urgent ? 'high' : 'low';
+        }
+        const { ai_result, ...rest } = item;
+        return { ...rest, severity, is_urgent };
+      });
+      return res.json(enhanced);
     }
     const list = await listByPatient(req.user.id);
-    return res.json(list);
+    const enhanced = list.map(item => {
+      let severity = 'low';
+      let is_urgent = item.status === 'urgent';
+      if (item.ai_result) {
+        try {
+          const ai = normalizeAIResult(item.ai_result, { description: item.description, age: req.user.age });
+          severity = ai.severity || severity;
+          is_urgent = typeof ai.urgent === 'boolean' ? ai.urgent : is_urgent;
+        } catch (_) {}
+      } else {
+        severity = is_urgent ? 'high' : 'low';
+      }
+      const { ai_result, ...rest } = item;
+      return { ...rest, severity, is_urgent };
+    });
+    return res.json(enhanced);
   } catch (e) { next(e); }
 }
 
