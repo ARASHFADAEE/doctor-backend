@@ -33,5 +33,22 @@ module.exports = {
   findValidOTP,
   markUsed,
   countOTPSentInLastHour,
+  listOTPsAdmin,
 };
 
+async function listOTPsAdmin({ page = 1, pageSize = 50, phone = null }) {
+  const offset = (page - 1) * pageSize;
+  const params = [];
+  let where = 'WHERE 1=1';
+  if (phone) { where += ' AND phone = ?'; params.push(phone); }
+  const [[tot]] = await pool.query(`SELECT COUNT(*) AS total FROM otp_codes ${where}`, params);
+  const [rows] = await pool.query(
+    `SELECT id, phone, code, used, expires_at, created_at
+     FROM otp_codes
+     ${where}
+     ORDER BY id DESC
+     LIMIT ? OFFSET ?`,
+    [...params, pageSize, offset]
+  );
+  return { total: tot.total, items: rows };
+}

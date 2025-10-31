@@ -207,6 +207,123 @@ export const logout = () => {
 { "success": true }
 ```
 
+### وضعیت سرویس (Health)
+- Endpoint: `GET /api/admin/health`
+- Headers: `Authorization: Bearer <JWT>`
+- Response:
+```json
+{ "ok": true, "timestamp": "2025-10-31T18:05:00.000Z" }
+```
+
+### آمار کلی (Overview)
+- Endpoint: `GET /api/admin/stats/overview`
+- Response:
+```json
+{
+  "users": { "total": 12, "patients": 9, "doctors": 2, "admins": 1 },
+  "tests":  { "total": 34, "pending": 7, "processed": 25, "urgent": 2 }
+}
+```
+
+### سری زمانی تست‌ها برای نمودار
+- Endpoint: `GET /api/admin/stats/timeseries?days=30`
+- Response:
+```json
+[
+  { "date": "2025-10-01", "total": 3, "pending": 1, "processed": 2, "urgent": 0 },
+  { "date": "2025-10-02", "total": 2, "pending": 0, "processed": 2, "urgent": 0 }
+]
+```
+
+### برچسب‌های پرتکرار (Trending Tags)
+- Endpoint: `GET /api/admin/stats/tags`
+- Response:
+```json
+[
+  { "tag": "آزمایش خون", "count": 10 },
+  { "tag": "ویتامین D", "count": 7 }
+]
+```
+
+### مدیریت تست‌ها (لیست با فیلتر)
+- Endpoint: `GET /api/admin/tests`
+- Query اختیاری: `status`, `doctor_id`, `patient_id`, `from`, `to`, `page`, `page_size`
+- Response:
+```json
+{
+  "page": 1,
+  "page_size": 20,
+  "items": [
+    {
+      "id": 5,
+      "description": "تست نمایشی",
+      "status": "urgent",
+      "severity": "high",
+      "is_urgent": true,
+      "created_at": "2025-10-31T17:23:26.000Z",
+      "image_path": "uploads/test_1761931406398_889267886.jpeg",
+      "patient": { "name": "کاربر نمونه", "phone": "0912..." },
+      "doctor": null
+    }
+  ]
+}
+```
+
+### جزئیات تست برای ادمین
+- Endpoint: `GET /api/admin/tests/:id`
+- Response:
+```json
+{
+  "id": 5,
+  "patient": { "id": 1, "name": "کاربر نمونه", "phone": "0912..." },
+  "doctor": null,
+  "image_path": "uploads/test_1761931406398_889267886.jpeg",
+  "description": "...",
+  "ai_result": { "summary": "...", "severity": "low", "urgent": false, "extracted_tags": ["آزمایش خون"] },
+  "status": "processed",
+  "created_at": "2025-10-31T17:23:26.000Z"
+}
+```
+
+### بروزرسانی تست (وضعیت/دکتر)
+- Endpoint: `PUT /api/admin/tests/:id`
+- Body: `{ "status": "pending|processed|urgent", "doctor_id": 3 }`
+- Response:
+```json
+{
+  "id": 5,
+  "patient_id": 1,
+  "doctor_id": 3,
+  "image_path": "uploads/test_1761931406398_889267886.jpeg",
+  "description": "...",
+  "ai_result": null,
+  "status": "urgent",
+  "created_at": "2025-10-31T17:23:26.000Z"
+}
+```
+
+### حذف تست
+- Endpoint: `DELETE /api/admin/tests/:id`
+- Response:
+```json
+{ "success": true }
+```
+
+### لیست OTPها برای مانیتورینگ
+- Endpoint: `GET /api/admin/otp-codes`
+- Query اختیاری: `phone`, `page`, `page_size`
+- Response:
+```json
+{
+  "page": 1,
+  "page_size": 50,
+  "total": 123,
+  "items": [
+    { "id": 250, "phone": "0912...", "code": "123456", "used": false, "expires_at": "2025-10-31T18:45:00.000Z", "created_at": "2025-10-31T18:40:00.000Z" }
+  ]
+}
+```
+
 ## 🖼️ دسترسی به فایل‌های آپلود
 - Static: `GET /uploads/<filename>`
 - مثال: `http://localhost:8889/uploads/test_1761931406398_889267886.jpeg`
