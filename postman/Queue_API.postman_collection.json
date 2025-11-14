@@ -1,0 +1,261 @@
+{
+  "info": {
+    "name": "MedAI Vision - Queue API",
+    "description": "مجموعه API های سیستم صف و نوبت‌دهی هوشمند",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "doctor_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "queue_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "queue_item_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Queue Management",
+      "item": [
+        {
+          "name": "Create or Get Queue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/queues/{{doctor_id}}/date/2025-11-15",
+              "host": ["{{base_url}}"],
+              "path": ["queues", "{{doctor_id}}", "date", "2025-11-15"]
+            }
+          }
+        },
+        {
+          "name": "Get Queue with Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/queues/{{doctor_id}}/date/2025-11-15",
+              "host": ["{{base_url}}"],
+              "path": ["queues", "{{doctor_id}}", "date", "2025-11-15"]
+            }
+          }
+        },
+        {
+          "name": "Get Today's Queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctor/{{doctor_id}}/queue/today",
+              "host": ["{{base_url}}"],
+              "path": ["doctor", "{{doctor_id}}", "queue", "today"]
+            }
+          }
+        },
+        {
+          "name": "Enqueue Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": 5,\n  \"appointment_id\": null,\n  \"expected_duration_minutes\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/queues/{{queue_id}}/enqueue",
+              "host": ["{{base_url}}"],
+              "path": ["queues", "{{queue_id}}", "enqueue"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue Item Operations",
+      "item": [
+        {
+          "name": "Start Visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/queue-items/{{queue_item_id}}/start",
+              "host": ["{{base_url}}"],
+              "path": ["queue-items", "{{queue_item_id}}", "start"]
+            }
+          }
+        },
+        {
+          "name": "End Visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actual_end_at\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/queue-items/{{queue_item_id}}/end",
+              "host": ["{{base_url}}"],
+              "path": ["queue-items", "{{queue_item_id}}", "end"]
+            }
+          }
+        },
+        {
+          "name": "Extend Visit Duration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"extra_minutes\": 5,\n  \"note\": \"نیاز به معاینه بیشتر\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/queue-items/{{queue_item_id}}/extend",
+              "host": ["{{base_url}}"],
+              "path": ["queue-items", "{{queue_item_id}}", "extend"]
+            }
+          }
+        },
+        {
+          "name": "Reposition Queue Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"queue_item_id\": 3,\n  \"new_position\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/queues/{{queue_id}}/position",
+              "host": ["{{base_url}}"],
+              "path": ["queues", "{{queue_id}}", "position"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor Settings",
+      "item": [
+        {
+          "name": "Get Doctor Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/settings",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Update Doctor Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"default_duration_minutes\": 10,\n  \"buffer_before_minutes\": 0,\n  \"buffer_after_minutes\": 2,\n  \"allow_overflow\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/settings",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "settings"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -447,3 +447,513 @@ export const ProtectedRoute = ({ children }) => {
 
 ---
 این مستند مطابق پیاده‌سازی فعلی سرویس شما نوشته شده و نمونه پاسخ‌ها از خروجی‌های واقعی استخراج شده‌اند تا فرانت‌اند دقیقاً بر اساس آن توسعه یابد.
+
+
+---
+
+## 🆕 سیستم صف و نوبت‌دهی هوشمند (Queue System)
+
+### معرفی
+سیستم صف هوشمند برای مدیریت نوبت‌های بیماران با قابلیت‌های زیر:
+- ✅ محاسبه خودکار زمان انتظار بر اساس داده‌های تاریخی
+- ✅ به‌روزرسانی Real-time با WebSocket
+- ✅ مدیریت صف روزانه برای هر پزشک
+- ✅ تایمر واقعی و اعلان‌های لحظه‌ای
+- ✅ امکان extend و reorder
+
+### API Endpoints
+
+#### 1. ایجاد یا دریافت صف
+```javascript
+POST /api/queues/:doctorId/date/:date
+Authorization: Bearer {token}
+
+// مثال
+const response = await fetch(`${API_BASE_URL}/queues/1/date/2025-11-15`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${getToken()}`
+  }
+});
+
+// Response
+{
+  "success": true,
+  "queue": {
+    "id": 1,
+    "doctor_id": 1,
+    "date": "2025-11-15",
+    "created_at": "2025-11-14T10:00:00.000Z"
+  }
+}
+```
+
+#### 2. دریافت صف با تمام بیماران
+```javascript
+GET /api/queues/:doctorId/date/:date
+Authorization: Bearer {token}
+
+// Response
+{
+  "success": true,
+  "queue": {
+    "id": 1,
+    "doctor_id": 1,
+    "date": "2025-11-15",
+    "items": [
+      {
+        "id": 1,
+        "position": 1,
+        "patient_id": 5,
+        "patient_name": "محمد رضایی",
+        "patient_phone": "09121111111",
+        "expected_duration_minutes": 10,
+        "estimated_start_at": "2025-11-15T09:00:00.000Z",
+        "estimated_end_at": "2025-11-15T09:10:00.000Z",
+        "status": "waiting"
+      },
+      {
+        "id": 2,
+        "position": 2,
+        "patient_id": 6,
+        "patient_name": "فاطمه کریمی",
+        "expected_duration_minutes": 8,
+        "estimated_start_at": "2025-11-15T09:12:00.000Z",
+        "estimated_end_at": "2025-11-15T09:20:00.000Z",
+        "status": "waiting"
+      }
+    ]
+  }
+}
+```
+
+#### 3. اضافه کردن بیمار به صف
+```javascript
+POST /api/queues/:queueId/enqueue
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "patient_id": 5,
+  "appointment_id": 10,  // اختیاری
+  "expected_duration_minutes": 10  // اختیاری - محاسبه خودکار
+}
+
+// Response
+{
+  "success": true,
+  "queue_item": {
+    "id": 1,
+    "queue_id": 1,
+    "patient_id": 5,
+    "position": 1,
+    "expected_duration_minutes": 10,
+    "estimated_start_at": "2025-11-15T09:00:00.000Z",
+    "estimated_end_at": "2025-11-15T09:10:00.000Z",
+    "status": "waiting"
+  }
+}
+```
+
+#### 4. شروع ویزیت
+```javascript
+POST /api/queue-items/:id/start
+Authorization: Bearer {token}
+
+// Response
+{
+  "success": true,
+  "message": "ویزیت شروع شد"
+}
+```
+
+#### 5. پایان ویزیت
+```javascript
+POST /api/queue-items/:id/end
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "actual_end_at": "2025-11-15T09:15:00.000Z"  // اختیاری
+}
+
+// Response
+{
+  "success": true,
+  "message": "ویزیت پایان یافت",
+  "actual_duration": 12  // دقیقه
+}
+```
+
+#### 6. افزایش زمان ویزیت
+```javascript
+POST /api/queue-items/:id/extend
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "extra_minutes": 5,
+  "note": "نیاز به معاینه بیشتر"
+}
+
+// Response
+{
+  "success": true,
+  "message": "زمان ویزیت افزایش یافت"
+}
+```
+
+#### 7. تغییر موقعیت در صف
+```javascript
+POST /api/queues/:queueId/position
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "queue_item_id": 3,
+  "new_position": 1
+}
+
+// Response
+{
+  "success": true,
+  "message": "موقعیت تغییر یافت"
+}
+```
+
+#### 8. تنظیمات پزشک
+```javascript
+// دریافت تنظیمات
+GET /api/doctors/:id/settings
+Authorization: Bearer {token}
+
+// Response
+{
+  "success": true,
+  "settings": {
+    "doctor_id": 1,
+    "default_duration_minutes": 8,
+    "buffer_before_minutes": 0,
+    "buffer_after_minutes": 2,
+    "allow_overflow": false
+  }
+}
+
+// به‌روزرسانی تنظیمات
+PUT /api/doctors/:id/settings
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "default_duration_minutes": 10,
+  "buffer_after_minutes": 2
+}
+```
+
+#### 9. صف امروز (راحتی)
+```javascript
+GET /api/doctor/:id/queue/today
+Authorization: Bearer {token}
+
+// Response: مشابه endpoint دریافت صف
+```
+
+### WebSocket - Real-time Updates
+
+#### اتصال
+```javascript
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:8889', {
+  auth: {
+    token: getToken()
+  }
+});
+
+socket.on('connect', () => {
+  console.log('✓ Connected to server');
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection error:', error.message);
+});
+```
+
+#### عضویت در اتاق‌ها
+```javascript
+// عضویت در صف
+socket.emit('join:queue', { queueId: 1 });
+
+socket.on('joined:queue', (data) => {
+  console.log('Joined queue:', data.queueId);
+});
+
+// عضویت در اتاق پزشک
+socket.emit('join:doctor', { doctorId: 1 });
+
+socket.on('joined:doctor', (data) => {
+  console.log('Joined doctor room:', data.doctorId);
+});
+
+// عضویت در اتاق بیمار
+socket.emit('join:patient', { patientId: 5 });
+
+socket.on('joined:patient', (data) => {
+  console.log('Joined patient room:', data.patientId);
+});
+```
+
+#### دریافت رویدادها
+```javascript
+// به‌روزرسانی صف
+socket.on('queue.update', (data) => {
+  console.log('Queue updated:', data.queueId);
+  console.log('Items:', data.items);
+  
+  // به‌روزرسانی UI
+  updateQueueUI(data.items);
+});
+
+// شروع ویزیت
+socket.on('queue.item.started', (data) => {
+  console.log('Visit started:', data.queueItemId);
+  showNotification('ویزیت شروع شد');
+});
+
+// پایان ویزیت
+socket.on('queue.item.ended', (data) => {
+  console.log('Visit ended:', data.queueItemId);
+  console.log('Duration:', data.actualDuration, 'minutes');
+  showNotification(`ویزیت پایان یافت (${data.actualDuration} دقیقه)`);
+});
+
+// تغییر زمان‌های تخمینی
+socket.on('queue.estimated_change', (data) => {
+  console.log('ETAs changed for queue:', data.queueId);
+  console.log('Affected items:', data.affected_items);
+  
+  // به‌روزرسانی زمان‌های نمایشی
+  updateEstimatedTimes(data.affected_items);
+});
+
+// تایمر (اختیاری)
+socket.on('timer.tick', (data) => {
+  console.log('Timer:', data.remainingSeconds, 'seconds');
+  updateTimerDisplay(data.queueItemId, data.remainingSeconds);
+});
+
+// خطا
+socket.on('error', (error) => {
+  console.error('Socket error:', error.message);
+  showError(error.message);
+});
+```
+
+### نمونه پیاده‌سازی کامل در React
+
+```javascript
+import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+
+function DoctorQueue({ doctorId }) {
+  const [queue, setQueue] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // دریافت صف امروز
+    fetchTodayQueue();
+    
+    // راه‌اندازی WebSocket
+    const newSocket = io('http://localhost:8889', {
+      auth: { token: getToken() }
+    });
+    
+    newSocket.on('connect', () => {
+      console.log('Connected');
+      // عضویت در صف
+      if (queue) {
+        newSocket.emit('join:queue', { queueId: queue.id });
+      }
+    });
+    
+    newSocket.on('queue.update', (data) => {
+      setQueue(prev => ({
+        ...prev,
+        items: data.items
+      }));
+    });
+    
+    newSocket.on('queue.item.started', (data) => {
+      showNotification('ویزیت شروع شد');
+    });
+    
+    newSocket.on('queue.item.ended', (data) => {
+      showNotification(`ویزیت پایان یافت (${data.actualDuration} دقیقه)`);
+    });
+    
+    setSocket(newSocket);
+    
+    return () => {
+      newSocket.close();
+    };
+  }, [doctorId]);
+
+  const fetchTodayQueue = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/doctor/${doctorId}/queue/today`,
+        {
+          headers: {
+            'Authorization': `Bearer ${getToken()}`
+          }
+        }
+      );
+      const data = await response.json();
+      setQueue(data.queue);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching queue:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleStartVisit = async (queueItemId) => {
+    try {
+      await fetch(`${API_BASE_URL}/queue-items/${queueItemId}/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        }
+      });
+      // UI به‌روزرسانی می‌شود از طریق WebSocket
+    } catch (error) {
+      console.error('Error starting visit:', error);
+    }
+  };
+
+  const handleEndVisit = async (queueItemId) => {
+    try {
+      await fetch(`${API_BASE_URL}/queue-items/${queueItemId}/end`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        }
+      });
+    } catch (error) {
+      console.error('Error ending visit:', error);
+    }
+  };
+
+  const handleExtend = async (queueItemId, minutes) => {
+    try {
+      await fetch(`${API_BASE_URL}/queue-items/${queueItemId}/extend`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          extra_minutes: minutes,
+          note: 'افزایش زمان'
+        })
+      });
+    } catch (error) {
+      console.error('Error extending visit:', error);
+    }
+  };
+
+  if (loading) return <div>در حال بارگذاری...</div>;
+
+  return (
+    <div className="queue-container">
+      <h2>صف امروز</h2>
+      <div className="queue-items">
+        {queue?.items?.map((item, index) => (
+          <div key={item.id} className={`queue-item status-${item.status}`}>
+            <div className="position">{item.position}</div>
+            <div className="patient-info">
+              <h3>{item.patient_name}</h3>
+              <p>{item.patient_phone}</p>
+            </div>
+            <div className="time-info">
+              <p>شروع: {new Date(item.estimated_start_at).toLocaleTimeString('fa-IR')}</p>
+              <p>پایان: {new Date(item.estimated_end_at).toLocaleTimeString('fa-IR')}</p>
+              <p>مدت: {item.expected_duration_minutes} دقیقه</p>
+            </div>
+            <div className="actions">
+              {item.status === 'waiting' && (
+                <button onClick={() => handleStartVisit(item.id)}>
+                  شروع
+                </button>
+              )}
+              {item.status === 'in_progress' && (
+                <>
+                  <button onClick={() => handleExtend(item.id, 5)}>
+                    +5 دقیقه
+                  </button>
+                  <button onClick={() => handleEndVisit(item.id)}>
+                    پایان
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### وضعیت‌های صف (Status)
+- `waiting`: در انتظار
+- `in_progress`: در حال ویزیت
+- `done`: تکمیل شده
+- `skipped`: رد شده (no-show)
+- `cancelled`: لغو شده
+
+### الگوریتم محاسبه زمان
+```
+expected_duration = 
+  0.5 × doctor_default_duration +
+  0.3 × patient_historical_avg +
+  0.2 × doctor_overall_avg
+
+estimated_start[i] = estimated_end[i-1] + buffer_after
+estimated_end[i] = estimated_start[i] + expected_duration[i]
+```
+
+### نکات مهم برای فرانت‌اند
+
+1. **Real-time Updates**: همیشه از WebSocket برای به‌روزرسانی UI استفاده کنید
+2. **Optimistic UI**: بعد از هر action، UI را فوراً به‌روزرسانی کنید (قبل از دریافت پاسخ socket)
+3. **Error Handling**: همیشه خطاهای شبکه را مدیریت کنید
+4. **Reconnection**: در صورت قطع اتصال WebSocket، دوباره متصل شوید
+5. **Notifications**: برای رویدادهای مهم (شروع/پایان ویزیت) نوتیفیکیشن نمایش دهید
+6. **Timer**: برای آیتم `in_progress` یک تایمر شمارش معکوس نمایش دهید
+
+---
+
+## 📚 مستندات Swagger
+
+برای مشاهده مستندات کامل و تعاملی API:
+
+🔗 **http://localhost:8889/api-docs**
+
+در این صفحه می‌توانید:
+- ✅ تمام endpoint ها را مشاهده کنید
+- ✅ مستقیماً API را تست کنید
+- ✅ نمونه request/response ببینید
+- ✅ Schema های داده را بررسی کنید
+
+### استفاده از Swagger UI
+
+1. به آدرس `http://localhost:8889/api-docs` بروید
+2. برای endpoint های محافظت شده، روی دکمه "Authorize" کلیک کنید
+3. توکن JWT خود را وارد کنید: `Bearer YOUR_TOKEN`
+4. روی "Try it out" کلیک کنید و API را تست کنید
+
+---
+
+این مستند مطابق پیاده‌سازی فعلی سرویس شما نوشته شده و نمونه پاسخ‌ها از خروجی‌های واقعی استخراج شده‌اند تا فرانت‌اند دقیقاً بر اساس آن توسعه یابد.

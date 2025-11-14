@@ -1,0 +1,145 @@
+paths:
+  /auth/send-otp:
+    post:
+      tags:
+        - Authentication
+      summary: ارسال کد OTP
+      description: ارسال کد تأیید به شماره موبایل کاربر
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  pattern: '^09[0-9]{9}$'
+                  example: '09121234567'
+                  description: شماره موبایل (11 رقم)
+      responses:
+        '200':
+          description: کد با موفقیت ارسال شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'کد تأیید ارسال شد'
+                  expires_in:
+                    type: integer
+                    example: 300
+                    description: زمان انقضا به ثانیه
+        '400':
+          description: شماره موبایل نامعتبر
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify-otp:
+    post:
+      tags:
+        - Authentication
+      summary: تأیید کد OTP
+      description: تأیید کد و دریافت توکن JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - code
+              properties:
+                phone:
+                  type: string
+                  example: '09121234567'
+                code:
+                  type: string
+                  example: '123456'
+                  description: کد 6 رقمی
+      responses:
+        '200':
+          description: کد تأیید شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+                  isNewUser:
+                    type: boolean
+                    example: false
+                    description: آیا کاربر جدید است؟
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: کد نامعتبر یا منقضی شده
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/complete-profile:
+    post:
+      tags:
+        - Authentication
+      summary: تکمیل پروفایل کاربر جدید
+      description: تکمیل اطلاعات کاربر جدید و دریافت توکن کامل
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - national_id
+                - age
+              properties:
+                name:
+                  type: string
+                  example: 'علی احمدی'
+                national_id:
+                  type: string
+                  pattern: '^[0-9]{10}$'
+                  example: '1234567890'
+                age:
+                  type: integer
+                  minimum: 1
+                  maximum: 120
+                  example: 30
+      responses:
+        '200':
+          description: پروفایل تکمیل شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: توکن JWT کامل
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'

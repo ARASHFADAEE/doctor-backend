@@ -1,0 +1,455 @@
+paths:
+  /queues/{doctorId}/date/{date}:
+    post:
+      tags:
+        - Queue
+      summary: ایجاد یا دریافت صف
+      description: ایجاد صف جدید برای پزشک در تاریخ مشخص یا دریافت صف موجود
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: شناسه پزشک
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+            example: '2025-11-15'
+          description: تاریخ به فرمت YYYY-MM-DD
+      responses:
+        '200':
+          description: صف با موفقیت ایجاد یا دریافت شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  queue:
+                    $ref: '#/components/schemas/Queue'
+        '400':
+          description: فرمت تاریخ نامعتبر
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    
+    get:
+      tags:
+        - Queue
+      summary: دریافت صف با تمام آیتم‌ها
+      description: دریافت صف و لیست بیماران در صف با زمان‌های تخمینی
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: صف با موفقیت دریافت شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  queue:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      doctor_id:
+                        type: integer
+                      date:
+                        type: string
+                        format: date
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/QueueItem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /queues/{queueId}/enqueue:
+    post:
+      tags:
+        - Queue
+      summary: اضافه کردن بیمار به صف
+      description: افزودن بیمار جدید به انتهای صف با محاسبه خودکار زمان تخمینی
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: شناسه صف
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - patient_id
+              properties:
+                patient_id:
+                  type: integer
+                  example: 5
+                  description: شناسه بیمار
+                appointment_id:
+                  type: integer
+                  nullable: true
+                  example: 10
+                  description: شناسه نوبت (اختیاری)
+                expected_duration_minutes:
+                  type: integer
+                  example: 10
+                  description: مدت زمان پیش‌بینی شده (اختیاری - در صورت عدم ارسال محاسبه خودکار می‌شود)
+      responses:
+        '200':
+          description: بیمار با موفقیت به صف اضافه شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  queue_item:
+                    $ref: '#/components/schemas/QueueItem'
+        '400':
+          description: پارامترهای نامعتبر
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /queue-items/{id}/start:
+    post:
+      tags:
+        - Queue
+      summary: شروع ویزیت
+      description: شروع ویزیت بیمار (ورود به اتاق) و بازمحاسبه زمان‌های تخمینی
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: شناسه آیتم صف
+      responses:
+        '200':
+          description: ویزیت با موفقیت شروع شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'ویزیت شروع شد'
+        '400':
+          description: وضعیت نامعتبر برای شروع
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /queue-items/{id}/end:
+    post:
+      tags:
+        - Queue
+      summary: پایان ویزیت
+      description: پایان ویزیت و ثبت مدت زمان واقعی برای آنالیز
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actual_end_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: زمان پایان واقعی (اختیاری - پیش‌فرض زمان فعلی)
+      responses:
+        '200':
+          description: ویزیت با موفقیت پایان یافت
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'ویزیت پایان یافت'
+                  actual_duration:
+                    type: integer
+                    example: 12
+                    description: مدت زمان واقعی (دقیقه)
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /queue-items/{id}/extend:
+    post:
+      tags:
+        - Queue
+      summary: افزایش زمان ویزیت
+      description: افزایش مدت زمان ویزیت جاری و بازمحاسبه زمان‌های بعدی
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - extra_minutes
+              properties:
+                extra_minutes:
+                  type: integer
+                  example: 5
+                  minimum: 1
+                  description: دقیقه اضافی
+                note:
+                  type: string
+                  example: 'نیاز به معاینه بیشتر'
+                  description: یادداشت (اختیاری)
+      responses:
+        '200':
+          description: زمان با موفقیت افزایش یافت
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'زمان ویزیت افزایش یافت'
+        '400':
+          description: مدت زمان نامعتبر
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /queues/{queueId}/position:
+    post:
+      tags:
+        - Queue
+      summary: تغییر موقعیت در صف
+      description: جابجایی دستی بیمار در صف (reordering)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - queue_item_id
+                - new_position
+              properties:
+                queue_item_id:
+                  type: integer
+                  example: 3
+                  description: شناسه آیتم صف
+                new_position:
+                  type: integer
+                  example: 1
+                  minimum: 1
+                  description: موقعیت جدید
+      responses:
+        '200':
+          description: موقعیت با موفقیت تغییر یافت
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'موقعیت تغییر یافت'
+        '400':
+          description: پارامترهای نامعتبر
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /doctors/{id}/settings:
+    get:
+      tags:
+        - Queue
+      summary: دریافت تنظیمات پزشک
+      description: دریافت تنظیمات صف و نوبت‌دهی پزشک
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: شناسه پزشک
+      responses:
+        '200':
+          description: تنظیمات با موفقیت دریافت شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  settings:
+                    $ref: '#/components/schemas/DoctorSettings'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Queue
+      summary: به‌روزرسانی تنظیمات پزشک
+      description: تغییر تنظیمات صف (فقط خود پزشک)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                default_duration_minutes:
+                  type: integer
+                  example: 10
+                buffer_before_minutes:
+                  type: integer
+                  example: 0
+                buffer_after_minutes:
+                  type: integer
+                  example: 2
+                allow_overflow:
+                  type: boolean
+                  example: false
+      responses:
+        '200':
+          description: تنظیمات با موفقیت به‌روزرسانی شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'تنظیمات به‌روزرسانی شد'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /doctor/{id}/queue/today:
+    get:
+      tags:
+        - Queue
+      summary: صف امروز پزشک
+      description: دریافت سریع صف امروز (endpoint راحتی)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: شناسه پزشک
+      responses:
+        '200':
+          description: صف امروز با موفقیت دریافت شد
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  queue:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      doctor_id:
+                        type: integer
+                      date:
+                        type: string
+                        format: date
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/QueueItem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'

@@ -5,7 +5,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "seed": "node scripts/seed-test-data.js",
+    "clean": "node scripts/clean-test-data.js",
+    "migrate": "mysql -u root -p < migrations/001_queue_system.sql"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +30,13 @@
     "mysql2": "^3.15.3",
     "openai": "^6.7.0",
     "soap": "^1.6.0",
+    "socket.io": "^4.7.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
   }
 }
