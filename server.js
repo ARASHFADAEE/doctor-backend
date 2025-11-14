@@ -11,6 +11,7 @@ const authRoutes = require('./src/routes/auth');
 const userRoutes = require('./src/routes/users');
 const testRoutes = require('./src/routes/tests');
 const adminRoutes = require('./src/routes/admin');
+const analyticsRoutes = require('./src/routes/analytics');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Error handler
 app.use(errorHandler);
@@ -44,4 +46,3 @@ initDB()
     console.error('Failed to initialize database:', err);
     process.exit(1);
   });
-

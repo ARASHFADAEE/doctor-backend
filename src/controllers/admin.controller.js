@@ -1,4 +1,4 @@
-const { listUsers, updateRole, deleteUser } = require('../models/User');
+const { listUsers, updateRole, deleteUser, findByPhone, createUser } = require('../models/User');
 const { pool } = require('../db');
 const { getById, updateTest } = require('../models/MedicalTest');
 const { normalizeAIResult } = require('../utils/aiResult');
@@ -31,6 +31,7 @@ async function removeUser(req, res, next) {
 
 module.exports = {
   listAllUsers,
+  createUserAdmin,
   changeUserRole,
   removeUser,
   health,
@@ -65,6 +66,29 @@ async function overviewStats(req, res, next) {
       users: { total: usersTotal.total, patients: patients.total, doctors: doctors.total, admins: admins.total },
       tests: { total: testsTotal.total, pending: pending.total, processed: processed.total, urgent: urgent.total },
     });
+  } catch (e) { next(e); }
+}
+
+async function createUserAdmin(req, res, next) {
+  try {
+    const { phone, name, national_id = null, age = null, role } = req.body || {};
+    if (!phone || !name || !role) {
+      return res.status(400).json({ success: false, message: 'فیلدهای لازم (phone, name, role) الزامی هستند' });
+    }
+    const allowedRoles = ['patient', 'doctor'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ success: false, message: 'نقش نامعتبر؛ فقط patient یا doctor مجاز است' });
+    }
+    const phoneRegex = /^09\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ success: false, message: 'فرمت شماره تلفن نامعتبر است (مثال: 09XXXXXXXXX)' });
+    }
+    const existing = await findByPhone(phone);
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'کاربری با این شماره تلفن وجود دارد' });
+    }
+    const user = await createUser({ phone, name, national_id, age, role });
+    return res.status(201).json(user);
   } catch (e) { next(e); }
 }
 

@@ -2,6 +2,7 @@ const express = require('express');
 const { attachUser, requireFullAuth, requireRole } = require('../middleware/auth');
 const {
   listAllUsers,
+  createUserAdmin,
   changeUserRole,
   removeUser,
   health,
@@ -18,6 +19,7 @@ const {
 const router = express.Router();
 
 router.get('/users', attachUser, requireFullAuth, requireRole('admin'), listAllUsers);
+router.post('/users', attachUser, requireFullAuth, requireRole('admin'), createUserAdmin);
 router.put('/users/:id/role', attachUser, requireFullAuth, requireRole('admin'), changeUserRole);
 router.delete('/users/:id', attachUser, requireFullAuth, requireRole('admin'), removeUser);
 
